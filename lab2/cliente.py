@@ -103,7 +103,8 @@ def print_registro(sock):
     print("Você está registrando. Para retornar a tela inicial, apenas entre com uma string vazia")
     # enquanto a string não for vazia, tentaremos registrar
     while True:
-        entrada = input("Digite a chave seguida do texto que deseja inserir: ")
+        entrada = input(
+            "Digite a chave seguidade de espaço e o texto que deseja inserir: ")
         if not entrada:
             break
         # if len(entrada.split(maxsplit=1)) < 2:

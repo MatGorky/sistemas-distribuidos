@@ -14,6 +14,7 @@ entradas = [sys.stdin]
 conexoes = {}
 
 
+# função para carregar o arquivo do disco e escrever em um dicionário na memória
 def acessa_dados():
     with open("dicionario.json", "r") as infile:
         if infile.read().strip() == '':
@@ -23,6 +24,8 @@ def acessa_dados():
             infile.seek(0)
             dicionario = json.load(infile)
         return dicionario
+
+# função para receber o dicionário da memória e guardar o arquivo no disco
 
 
 def guarda_dados(dicionario):
@@ -51,6 +54,8 @@ def iniciaServidor():
 
     checa_arquivo()
     return sock
+
+# Garante que o arquivo vai existir, pois se não existir, ele será criado
 
 
 def checa_arquivo():
@@ -90,10 +95,14 @@ def atendeRequisicoes(clisock, endr):
         if not data:  # dados vazios: cliente encerrou
             print(str(endr) + '-> encerrou')
             clisock.close()  # encerra a conexao com o cliente
-        data = processa_requisicao(str(data, encoding='utf-8'), str(endr))
-        clisock.send(data.encode())  # ecoa os dados para o cliente
+            return
+        else:
+            data = processa_requisicao(str(data, encoding='utf-8'), str(endr))
+            clisock.send(data.encode())  # envia a resposta para o cliente
 
 
+# processa a requisião, se for um "post" é para inserir, se for um "get" para consultar
+# neste sistema, outros tipos de requisição não são possíveis
 def processa_requisicao(requisicao, endr):
     if requisicao[0] == "p":
         print(f"{endr}: inserindo {requisicao}")
@@ -120,11 +129,12 @@ def registra(requisicao):
 
     string_resposta = ""
     chave = requisicao[0]
-    if len(requisicao) > 1:
+    if len(requisicao) > 1:  # if para o caso do valor ser vazio
         valor = requisicao[1]
     else:
         valor = ""
 
+    # acessando os dados para saber se a chave será inserida ou rescrita
     dicionario = acessa_dados()
     if chave in dicionario:
         string_resposta = f"A chave '{chave}' já se encontrava no dicionário, valor reescrito"
@@ -135,11 +145,22 @@ def registra(requisicao):
     return string_resposta
 
 
+def remove(chave):
+    dicionario = acessa_dados()
+    if chave in dicionario:
+        del dicionario[chave]
+        guarda_dados(dicionario)
+        print(f"A chave '{chave}' foi removida com sucesso")
+    else:
+        print("Chave não encontrada")
+
+
 def main():
     '''Inicializa e implementa o loop principal (infinito) do servidor'''
     clientes = []  # armazena as threads criadas para fazer join
     sock = iniciaServidor()
     print("Pronto para receber conexoes...")
+    print("Digite fim se quiser fechar o servidor, digite 'remover <chave>', se quiser remover uma chave do dicionário")
     while True:
         # espera por qualquer entrada de interesse
         leitura, escrita, excecao = select.select(entradas, [], [])
@@ -155,14 +176,21 @@ def main():
                 # armazena a referencia da thread para usar com join()
                 clientes.append(cliente)
             elif pronto == sys.stdin:  # entrada padrao
-                cmd = input("teste")
-                if cmd == 'fim':  # solicitacao de finalizacao do servidor
+                cmd = input()
+                if cmd:
+                    cmd = cmd.split(maxsplit=1)
+                else:
+                    continue
+                if cmd[0] == 'fim':  # solicitacao de finalizacao do servidor
                     for c in clientes:  # aguarda todas as threads terminarem
                         c.join()
                     sock.close()
                     sys.exit()
-                elif cmd == 'hist':  # outro exemplo de comando para o servidor
-                    print(str(conexoes.values()))
+                elif cmd[0] == 'remover':  # outro exemplo de comando para o servidor
+                    if len(cmd) > 1:
+                        remove(cmd[1])
+                    else:
+                        print("Não há chave vazia")
 
 
 if __name__ == '__main__':
