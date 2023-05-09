@@ -4,7 +4,7 @@ import os
 import platform
 
 HOST = 'localhost'  # maquina onde esta o servidor
-PORT = 10001       # porta que o servidor esta escutando
+PORT = 10005      # porta que o servidor esta escutando
 
 clear = ""
 
@@ -106,6 +106,9 @@ def print_registro(sock):
         entrada = input("Digite a chave seguida do texto que deseja inserir: ")
         if not entrada:
             break
+        # if len(entrada.split(maxsplit=1)) < 2:
+            # print("Valo")
+            # continue
         metodo = 'p'  # metodo de requisição, p é referência a post
         requisicao = f'{metodo}{entrada}'
         faz_requisicao(sock, requisicao)

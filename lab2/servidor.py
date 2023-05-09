@@ -6,7 +6,7 @@ import threading
 
 # define a localizacao do servidor
 HOST = ''  # vazio indica que podera receber requisicoes a partir de qq interface de rede da maquina
-PORT = 10001  # porta de acesso
+PORT = 10005  # porta de acesso
 
 # define a lista de I/O de interesse (jah inclui a entrada padrao)
 entradas = [sys.stdin]
@@ -16,14 +16,18 @@ conexoes = {}
 
 def acessa_dados():
     with open("dicionario.json", "r") as infile:
-        json = infile.read()
-        dicionario = json.loads(json)
+        if infile.read().strip() == '':
+            dicionario = {}  # Se o arquivo estiver vazio
+        else:
+            # Senão, carregamos o json
+            infile.seek(0)
+            dicionario = json.load(infile)
         return dicionario
 
 
-def carrega_dados(dicionario):
-    with open("dicionario.json", "r") as outfile:
-        json = json.dumps(dicionario)
+def guarda_dados(dicionario):
+    with open("dicionario.json", "w") as outfile:
+        json.dump(dicionario, outfile)
 
 
 def iniciaServidor():
@@ -45,7 +49,20 @@ def iniciaServidor():
     # inclui o socket principal na lista de entradas de interesse
     entradas.append(sock)
 
+    checa_arquivo()
     return sock
+
+
+def checa_arquivo():
+    try:
+        # tenta abrir o arquivo em modo de escrita
+        with open('dicionario.json', '+r') as arquivo:
+            print("Arquivo existente")
+
+    except FileNotFoundError:
+        # se ocorrer um erro de arquivo não encontrado, cria o arquivo
+        with open('dicionario.json', '+w') as arquivo:
+            print("Arquivo criado com sucesso!")
 
 
 def aceitaConexao(sock):
@@ -74,19 +91,48 @@ def atendeRequisicoes(clisock, endr):
             print(str(endr) + '-> encerrou')
             clisock.close()  # encerra a conexao com o cliente
         data = processa_requisicao(str(data, encoding='utf-8'), str(endr))
-        clisock.send(data)  # ecoa os dados para o cliente
+        clisock.send(data.encode())  # ecoa os dados para o cliente
 
 
 def processa_requisicao(requisicao, endr):
     if requisicao[0] == "p":
         print(f"{endr}: inserindo {requisicao}")
-        return resp
+        return registra(requisicao[1:])
     elif requisicao[0] == "g":
         print(f"{endr}: consultando {requisicao}")
-        return resp
+        return consulta(requisicao[1:])
     else:
         print("requisição falha")
     return
+
+
+def consulta(requisicao):
+    dicionario = acessa_dados()
+    if requisicao in dicionario:
+        return f"O valor da chave consultada é: {dicionario[requisicao]}"
+    else:
+        return f"Chave não encontrada"
+
+
+def registra(requisicao):
+    # separando a chave do resto da string, que se tornará o valor
+    requisicao = requisicao.split(maxsplit=1)
+
+    string_resposta = ""
+    chave = requisicao[0]
+    if len(requisicao) > 1:
+        valor = requisicao[1]
+    else:
+        valor = ""
+
+    dicionario = acessa_dados()
+    if chave in dicionario:
+        string_resposta = f"A chave '{chave}' já se encontrava no dicionário, valor reescrito"
+    else:
+        string_resposta = f"A chave '{chave}' não se encontrava no dicionário, valor inserido"
+    dicionario[chave] = valor
+    guarda_dados(dicionario)
+    return string_resposta
 
 
 def main():
